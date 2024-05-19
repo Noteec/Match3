@@ -1,0 +1,19 @@
+{
+  "devDependencies": {
+    "@types/howler": "^2.2.11",
+    "html-webpack-plugin": "^5.6.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.4",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "howler": "^2.2.4",
+    "pixi.js": "^5.3.10"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
