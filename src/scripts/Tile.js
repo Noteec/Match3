@@ -31,7 +31,7 @@ const PIXI = __importStar(require("pixi.js"));
 const gsap_1 = __importDefault(require("gsap"));
 class Tile {
     constructor(texture, type) {
-        this.sprite = new PIXI.Sprite(texture);
+        this.sprite = new PIXI.Sprite(texture); // Создание спрайта с переданной текстурой
         this.sprite.width = 50;
         this.sprite.height = 50;
         this.sprite.anchor.set(0.5);
@@ -39,25 +39,29 @@ class Tile {
         this.field = null;
     }
     setPosition(position) {
+        // Установка позиции спрайта
         this.sprite.x = position.x;
         this.sprite.y = position.y;
     }
     moveTo(position, duration, delay = 0, ease = "linear") {
+        // Анимация перемещения плитки к заданной позиции
         return new Promise(resolve => {
             gsap_1.default.to(this.sprite, {
                 x: position.x,
                 y: position.y,
-                duration,
-                delay,
-                ease,
+                duration, // Продолжительность анимации
+                delay, // Задержка перед началом анимации
+                ease, // Тип плавности анимации
                 onComplete: () => resolve()
             });
         });
     }
     fallDownTo(position, delay = 0) {
+        // Анимация падения плитки к заданной позиции с эффектом "bounce"
         return this.moveTo(position, 0.5, delay, "bounce.out");
     }
     remove() {
+        // Удаление спрайта плитки и освобождение поля
         if (this.sprite.parent) {
             this.sprite.parent.removeChild(this.sprite);
         }
@@ -66,6 +70,7 @@ class Tile {
         }
     }
     isNeighbour(tile) {
+        // Проверка, является ли данная плитка соседней по отношению к другой плитке
         if (!this.field || !tile.field)
             return false;
         const rowDiff = Math.abs(this.field.row - tile.field.row);

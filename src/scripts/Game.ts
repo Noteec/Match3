@@ -5,7 +5,9 @@ import { CombinationManager } from "./CombinationManager";
 import gsap from "gsap";
 import { PixiPlugin } from "gsap/PixiPlugin";
 import { HUD } from "./HUD";
+import { Howl, Howler } from 'howler';
 
+// Регистрация плагина PixiPlugin в GSAP
 gsap.registerPlugin(PixiPlugin);
 PixiPlugin.registerPIXI(PIXI);
 
@@ -17,6 +19,8 @@ export class Game {
     selectedTile: Tile | null;
     hud: HUD;
     isInitialRemoval: boolean;
+    destroySound: Howl;
+    backgroundMusic: Howl;
 
     constructor(app: PIXI.Application, textures: PIXI.Texture[], gameDuration: number) {
         this.container = new PIXI.Container();
@@ -27,11 +31,13 @@ export class Game {
 
         this.combinationManager = new CombinationManager(this.board);
 
-        this.hud = new HUD(app, gameDuration);
+        this.hud = new HUD(app, gameDuration, this);
         this.container.addChild(this.hud.container);
 
+        // Обработка кликов по тайлам
         this.board.container.on('tile-touch-start', this.onTileClick.bind(this));
 
+        // Первоначальное удаление совпадений
         this.isInitialRemoval = true;
         this.removeStartMatches();
         this.isInitialRemoval = false;
@@ -39,13 +45,41 @@ export class Game {
         this.disabled = false;
         this.selectedTile = null;
 
-        app.ticker.add(this.update.bind(this)); // Добавить метод update в тикер приложения
+        // Добавление метода update в тикер приложения
+        app.ticker.add(this.update.bind(this));
+
+        // Инициализация звуков
+        this.destroySound = new Howl({
+            src: ['../src/assets/destroySound.mp3'],
+            volume: 0.5
+        });
+
+        this.backgroundMusic = new Howl({
+            src: ['../src/assets/BGM.mp3'],
+            loop: true,
+            volume: 0.5
+        });
+
+        // Запуск фоновой музыки
+        this.backgroundMusic.play();
     }
 
+    // Метод обновления HUD
     update(): void {
         this.hud.update();
     }
 
+    // Включение/выключение звука
+    toggleSound(isSoundOn: boolean) {
+        this.destroySound.mute(!isSoundOn);
+    }
+
+    // Включение/выключение музыки
+    toggleMusic(isMusicOn: boolean) {
+        this.backgroundMusic.mute(!isMusicOn);
+    }
+
+    // Удаление начальных совпадений
     removeStartMatches(): void {
         let matches = this.combinationManager.getMatches();
 
@@ -62,6 +96,7 @@ export class Game {
         }
     }
 
+    // Обработка клика по тайлу
     onTileClick(tile: Tile): void {
         if (this.disabled) {
             return;
@@ -78,6 +113,7 @@ export class Game {
         }
     }
 
+    // Смена местами двух тайлов
     swap(selectedTile: Tile, tile: Tile, reverse: boolean = false): void {
         this.disabled = true;
         selectedTile.sprite.zIndex = 2;
@@ -102,10 +138,8 @@ export class Game {
         }
     }
 
+    // Удаление совпадений
     removeMatches(matches: Tile[][]): void {
-        console.log(matches);
-        console.log(matches.length);
-        
         matches.forEach(match => {
             match.forEach(tile => {
                 if (tile) {
@@ -116,8 +150,17 @@ export class Game {
                 }
             });
         });
+
+        // Воспроизведение звука передвижения
+        if (this.destroySound) {
+            console.log("Playing move sound");
+            this.destroySound.play();
+        } else {
+            console.log("Move sound not initialized");
+        }
     }
 
+    // Обработка совпадений
     processMatches(matches: Tile[][]): void {
         this.removeMatches(matches);
         this.processFallDown()
@@ -125,6 +168,7 @@ export class Game {
             .then(() => this.onFallDownOver());
     }
 
+    // Метод вызывается после окончания падения тайлов
     onFallDownOver(): void {
         const matches = this.combinationManager.getMatches();
 
@@ -135,6 +179,7 @@ export class Game {
         }
     }
 
+    // Добавление новых тайлов
     addTiles(): Promise<void> {
         return new Promise(resolve => {
             const fields = this.board.fields.filter(field => field.tile === null);
@@ -155,6 +200,7 @@ export class Game {
         });
     }
 
+    // Обработка падения тайлов
     processFallDown(): Promise<void> {
         return new Promise(resolve => {
             let completed = 0;
@@ -177,6 +223,7 @@ export class Game {
         });
     }
 
+    // Падение тайла в пустое поле
     fallDownTo(emptyField: any): Promise<void> {
         for (let row = emptyField.row - 1; row >= 0; row--) {
             let fallingField = this.board.getField(row, emptyField.col);
@@ -192,6 +239,7 @@ export class Game {
         return Promise.resolve();
     }
 
+    // Очистка выделения тайла
     clearSelection(): void {
         if (this.selectedTile && this.selectedTile.field) {
             this.selectedTile.field.unselect();
@@ -199,8 +247,24 @@ export class Game {
         }
     }
 
+    // Выбор тайла
     selectTile(tile: Tile): void {
         this.selectedTile = tile;
         this.selectedTile.field?.select();
+    }
+
+    endGame(): void {
+        this.disabled = true;
+        this.backgroundMusic.stop(); // Останавливаем фоновую музыку
+
+        const gameOverText = new PIXI.Text('Game Over', { fontSize: 48, fill: '#ff0000', align: 'center' });
+        gameOverText.anchor.set(0.5);
+        gameOverText.position.set(this.container.width / 2, this.container.height / 2);
+        this.container.addChild(gameOverText);
+
+        const finalScoreText = new PIXI.Text(`Your Score: ${this.hud.score}`, { fontSize: 36, fill: '#ffffff', align: 'center' });
+        finalScoreText.anchor.set(0.5);
+        finalScoreText.position.set(this.container.width / 2, this.container.height / 2 + 60);
+        this.container.addChild(finalScoreText);
     }
 }

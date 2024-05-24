@@ -5,10 +5,10 @@ import { Field } from "./Field";
 export class Tile {
     sprite: PIXI.Sprite;
     type: number;
-    field: Field | null;
+    field: Field | null; // Поле, на котором находится плитка
 
     constructor(texture: PIXI.Texture, type: number) {
-        this.sprite = new PIXI.Sprite(texture);
+        this.sprite = new PIXI.Sprite(texture); // Создание спрайта с переданной текстурой
         this.sprite.width = 50;
         this.sprite.height = 50;
         this.sprite.anchor.set(0.5);
@@ -17,28 +17,32 @@ export class Tile {
     }
 
     setPosition(position: { x: number, y: number }): void {
+        // Установка позиции спрайта
         this.sprite.x = position.x;
         this.sprite.y = position.y;
     }
 
     moveTo(position: { x: number, y: number }, duration: number, delay: number = 0, ease: string = "linear"): Promise<void> {
+        // Анимация перемещения плитки к заданной позиции
         return new Promise(resolve => {
             gsap.to(this.sprite, {
                 x: position.x,
                 y: position.y,
-                duration,
-                delay,
-                ease,
+                duration, // Продолжительность анимации
+                delay, // Задержка перед началом анимации
+                ease, // Тип плавности анимации
                 onComplete: () => resolve()
             });
         });
     }
 
     fallDownTo(position: { x: number, y: number }, delay: number = 0): Promise<void> {
+        // Анимация падения плитки к заданной позиции с эффектом "bounce"
         return this.moveTo(position, 0.5, delay, "bounce.out");
     }
 
     remove(): void {
+        // Удаление спрайта плитки и освобождение поля
         if (this.sprite.parent) {
             this.sprite.parent.removeChild(this.sprite);
         }
@@ -48,6 +52,7 @@ export class Tile {
     }
 
     isNeighbour(tile: Tile): boolean {
+        // Проверка, является ли данная плитка соседней по отношению к другой плитке
         if (!this.field || !tile.field) return false;
 
         const rowDiff = Math.abs(this.field.row - tile.field.row);

@@ -33,6 +33,8 @@ const CombinationManager_1 = require("./CombinationManager");
 const gsap_1 = __importDefault(require("gsap"));
 const PixiPlugin_1 = require("gsap/PixiPlugin");
 const HUD_1 = require("./HUD");
+const howler_1 = require("howler");
+// Регистрация плагина PixiPlugin в GSAP
 gsap_1.default.registerPlugin(PixiPlugin_1.PixiPlugin);
 PixiPlugin_1.PixiPlugin.registerPIXI(PIXI);
 class Game {
@@ -42,19 +44,44 @@ class Game {
         this.board = new Board_1.Board(textures);
         this.container.addChild(this.board.container);
         this.combinationManager = new CombinationManager_1.CombinationManager(this.board);
-        this.hud = new HUD_1.HUD(app, gameDuration);
+        this.hud = new HUD_1.HUD(app, gameDuration, this);
         this.container.addChild(this.hud.container);
+        // Обработка кликов по тайлам
         this.board.container.on('tile-touch-start', this.onTileClick.bind(this));
+        // Первоначальное удаление совпадений
         this.isInitialRemoval = true;
         this.removeStartMatches();
         this.isInitialRemoval = false;
         this.disabled = false;
         this.selectedTile = null;
-        app.ticker.add(this.update.bind(this)); // Добавить метод update в тикер приложения
+        // Добавление метода update в тикер приложения
+        app.ticker.add(this.update.bind(this));
+        // Инициализация звуков
+        this.destroySound = new howler_1.Howl({
+            src: ['../src/assets/destroySound.mp3'],
+            volume: 0.5
+        });
+        this.backgroundMusic = new howler_1.Howl({
+            src: ['../src/assets/BGM.mp3'],
+            loop: true,
+            volume: 0.5
+        });
+        // Запуск фоновой музыки
+        this.backgroundMusic.play();
     }
+    // Метод обновления HUD
     update() {
         this.hud.update();
     }
+    // Включение/выключение звука
+    toggleSound(isSoundOn) {
+        this.destroySound.mute(!isSoundOn);
+    }
+    // Включение/выключение музыки
+    toggleMusic(isMusicOn) {
+        this.backgroundMusic.mute(!isMusicOn);
+    }
+    // Удаление начальных совпадений
     removeStartMatches() {
         let matches = this.combinationManager.getMatches();
         while (matches.length) {
@@ -66,6 +93,7 @@ class Game {
             matches = this.combinationManager.getMatches();
         }
     }
+    // Обработка клика по тайлу
     onTileClick(tile) {
         if (this.disabled) {
             return;
@@ -83,6 +111,7 @@ class Game {
             this.selectTile(tile);
         }
     }
+    // Смена местами двух тайлов
     swap(selectedTile, tile, reverse = false) {
         this.disabled = true;
         selectedTile.sprite.zIndex = 2;
@@ -106,9 +135,8 @@ class Game {
             });
         }
     }
+    // Удаление совпадений
     removeMatches(matches) {
-        console.log(matches);
-        console.log(matches.length);
         matches.forEach(match => {
             match.forEach(tile => {
                 if (tile) {
@@ -119,13 +147,23 @@ class Game {
                 }
             });
         });
+        // Воспроизведение звука передвижения
+        if (this.destroySound) {
+            console.log("Playing move sound");
+            this.destroySound.play();
+        }
+        else {
+            console.log("Move sound not initialized");
+        }
     }
+    // Обработка совпадений
     processMatches(matches) {
         this.removeMatches(matches);
         this.processFallDown()
             .then(() => this.addTiles())
             .then(() => this.onFallDownOver());
     }
+    // Метод вызывается после окончания падения тайлов
     onFallDownOver() {
         const matches = this.combinationManager.getMatches();
         if (matches.length) {
@@ -135,6 +173,7 @@ class Game {
             this.disabled = false;
         }
     }
+    // Добавление новых тайлов
     addTiles() {
         return new Promise(resolve => {
             const fields = this.board.fields.filter(field => field.tile === null);
@@ -153,6 +192,7 @@ class Game {
             });
         });
     }
+    // Обработка падения тайлов
     processFallDown() {
         return new Promise(resolve => {
             let completed = 0;
@@ -173,6 +213,7 @@ class Game {
             }
         });
     }
+    // Падение тайла в пустое поле
     fallDownTo(emptyField) {
         for (let row = emptyField.row - 1; row >= 0; row--) {
             let fallingField = this.board.getField(row, emptyField.col);
@@ -186,16 +227,40 @@ class Game {
         }
         return Promise.resolve();
     }
+    // Очистка выделения тайла
     clearSelection() {
         if (this.selectedTile && this.selectedTile.field) {
             this.selectedTile.field.unselect();
             this.selectedTile = null;
         }
     }
+    // Выбор тайла
     selectTile(tile) {
         var _a;
         this.selectedTile = tile;
         (_a = this.selectedTile.field) === null || _a === void 0 ? void 0 : _a.select();
+    }
+    endGame() {
+        this.disabled = true; // Отключаем взаимодействие
+        this.backgroundMusic.stop(); // Останавливаем фоновую музыку
+        // Создаем серый прямоугольник для текста "Game Over"
+        const gameOverBackground = new PIXI.Graphics();
+        gameOverBackground.beginFill(0x666666); // Серый цвет
+        gameOverBackground.drawRect(0, 0, 300, 100); // Размеры прямоугольника подберите под свои нужды
+        gameOverBackground.endFill();
+        gameOverBackground.pivot.set(150, 50); // Центр прямоугольника
+        gameOverBackground.position.set(this.container.width / 2, this.container.height / 2); // Позиция прямоугольника
+        this.container.addChild(gameOverBackground);
+        // Текст "Game Over"
+        const gameOverText = new PIXI.Text('Game Over', { fontSize: 48, fill: '#ff0000', align: 'center' });
+        gameOverText.anchor.set(0.5);
+        gameOverText.position.set(this.container.width / 2, this.container.height / 2);
+        this.container.addChild(gameOverText);
+        // Текст итогового счета
+        const finalScoreText = new PIXI.Text(`Your Score: ${this.hud.score}`, { fontSize: 36, fill: '#ffffff', align: 'center' });
+        finalScoreText.anchor.set(0.5);
+        finalScoreText.position.set(this.container.width / 2, this.container.height / 2 + 60);
+        this.container.addChild(finalScoreText);
     }
 }
 exports.Game = Game;
