@@ -18,6 +18,10 @@
 
 `npm install ts-loader --save-dev`
 
+-howler. js is an audio library for the modern web. It defaults to Web Audio API and falls back to HTML5 Audio. This makes working with audio in JavaScript easy and reliable across all platforms.
+
+`npm install howler`
+
 -For using app we should use server or browser launched without CORS privacy:
 cmd: 
 `"C:\Program Files\Google\Chrome\Application\chrome.exe" --disable-web-security --user-data-dir="C:/ChromeDevSession"`
